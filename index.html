@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Earth Rings Simulator</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #000;
+            font-family: Arial, sans-serif;
+        }
+
+        canvas {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+
+        #controls {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+            color: white;
+        }
+
+        #location-select {
+            width: 200px;
+            padding: 5px;
+            margin-bottom: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            border-radius: 3px;
+        }
+
+        .control-group {
+            margin-bottom: 10px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .coordinates {
+            font-size: 12px;
+            color: #aaa;
+            margin-top: 5px;
+        }
+
+        #position-indicator {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+            color: white;
+            font-size: 14px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="position-indicator"></div>
+    <script type="module" src="/src/main.ts"></script>
+</body>
+
+</html>
