@@ -58,6 +58,8 @@ class RingSimulator {
     pipFov: 75, // Field of view in degrees
     pipHeight: 0.2, // Height above surface in km (reduced default value)
     pipExportSize: "4K", // Export resolution
+    // Ring settings
+    ringScale: 1.0, // Scale factor for ring size
     // Calibration settings
     textureOffset: 0.5,
     textureRotation: Math.PI,
@@ -168,8 +170,8 @@ class RingSimulator {
     const ringTexture = textureLoader.load("/saturn-rings.jpg");
 
     const ringGeometry = new THREE.RingGeometry(
-      RING_INNER_RADIUS,
-      RING_OUTER_RADIUS,
+      RING_INNER_RADIUS * this.settings.ringScale,
+      RING_OUTER_RADIUS * this.settings.ringScale,
       128
     );
     const ringMaterial = new THREE.MeshBasicMaterial({
@@ -195,7 +197,9 @@ class RingSimulator {
 
       // Map radius to U coordinate (0 to 1 from inner to outer)
       const u =
-        (radius - RING_INNER_RADIUS) / (RING_OUTER_RADIUS - RING_INNER_RADIUS);
+        (radius - RING_INNER_RADIUS * this.settings.ringScale) /
+        (RING_OUTER_RADIUS * this.settings.ringScale -
+          RING_INNER_RADIUS * this.settings.ringScale);
       // Map angle to V coordinate
       const v = (angle + Math.PI) / (Math.PI * 2);
 
@@ -661,45 +665,8 @@ class RingSimulator {
     pointLight.position.set(100000, 10000, 100000);
     this.pipScene.add(pointLight);
 
-    // Copy the rings
-    const ringGeometry = new THREE.RingGeometry(
-      RING_INNER_RADIUS,
-      RING_OUTER_RADIUS,
-      128
-    );
-    const textureLoader = new THREE.TextureLoader();
-    const ringTexture = textureLoader.load("/saturn-rings.jpg");
-    const ringMaterial = new THREE.MeshBasicMaterial({
-      map: ringTexture,
-      side: THREE.DoubleSide,
-      transparent: true,
-      opacity: this.settings.ringOpacity,
-      alphaTest: 0.1,
-    });
-    this.pipRings = new THREE.Mesh(ringGeometry, ringMaterial);
-    this.pipRings.rotation.x = THREE.MathUtils.degToRad(RING_TILT);
-    this.pipScene.add(this.pipRings);
-
-    // Add UV mapping for the ring texture
-    const pos = ringGeometry.attributes.position;
-    const v3 = new THREE.Vector3();
-    const uv = [];
-
-    for (let i = 0; i < pos.count; i++) {
-      v3.fromBufferAttribute(pos, i);
-      const radius = v3.length();
-      const angle = Math.atan2(v3.y, v3.x);
-
-      // Map radius to U coordinate (0 to 1 from inner to outer)
-      const u =
-        (radius - RING_INNER_RADIUS) / (RING_OUTER_RADIUS - RING_INNER_RADIUS);
-      // Map angle to V coordinate
-      const v = (angle + Math.PI) / (Math.PI * 2);
-
-      uv.push(u, v);
-    }
-
-    ringGeometry.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
+    // Create rings
+    this.createPipRings();
 
     // Copy the stars
     const starsGeometry = new THREE.BufferGeometry();
@@ -745,6 +712,56 @@ class RingSimulator {
 
     this.pipStars = new THREE.Points(starsGeometry, starsMaterial);
     this.pipScene.add(this.pipStars);
+  }
+
+  // New method to create/update only the PIP rings
+  private createPipRings(): void {
+    // Remove existing rings if they exist
+    if (this.pipRings) {
+      this.pipScene.remove(this.pipRings);
+    }
+
+    // Create new rings with current scale
+    const ringGeometry = new THREE.RingGeometry(
+      RING_INNER_RADIUS * this.settings.ringScale,
+      RING_OUTER_RADIUS * this.settings.ringScale,
+      128
+    );
+    const textureLoader = new THREE.TextureLoader();
+    const ringTexture = textureLoader.load("/saturn-rings.jpg");
+    const ringMaterial = new THREE.MeshBasicMaterial({
+      map: ringTexture,
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: this.settings.ringOpacity,
+      alphaTest: 0.1,
+    });
+    this.pipRings = new THREE.Mesh(ringGeometry, ringMaterial);
+    this.pipRings.rotation.x = THREE.MathUtils.degToRad(RING_TILT);
+    this.pipScene.add(this.pipRings);
+
+    // Add UV mapping for the ring texture
+    const pos = ringGeometry.attributes.position;
+    const v3 = new THREE.Vector3();
+    const uv = [];
+
+    for (let i = 0; i < pos.count; i++) {
+      v3.fromBufferAttribute(pos, i);
+      const radius = v3.length();
+      const angle = Math.atan2(v3.y, v3.x);
+
+      // Map radius to U coordinate (0 to 1 from inner to outer)
+      const u =
+        (radius - RING_INNER_RADIUS * this.settings.ringScale) /
+        (RING_OUTER_RADIUS * this.settings.ringScale -
+          RING_INNER_RADIUS * this.settings.ringScale);
+      // Map angle to V coordinate
+      const v = (angle + Math.PI) / (Math.PI * 2);
+
+      uv.push(u, v);
+    }
+
+    ringGeometry.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
   }
 
   private updatePictureInPicture(): void {
@@ -948,6 +965,20 @@ class RingSimulator {
         (this.rings.material as THREE.MeshBasicMaterial).opacity = value;
         if (this.pipRings) {
           (this.pipRings.material as THREE.MeshBasicMaterial).opacity = value;
+        }
+      });
+
+    viewFolder
+      .add(this.settings, "ringScale", 0.5, 2, 0.1)
+      .name("Ring Scale")
+      .onChange((value: number) => {
+        // Recreate rings with new scale
+        this.scene.remove(this.rings);
+        this.createRings();
+
+        // Update PIP rings if they exist
+        if (this.pipScene) {
+          this.createPipRings();
         }
       });
 
