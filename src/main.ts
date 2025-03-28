@@ -7,7 +7,7 @@ import { locations } from "./locations";
 const EARTH_RADIUS = 6371; // km
 const RING_INNER_RADIUS = EARTH_RADIUS * 1.5;
 const RING_OUTER_RADIUS = EARTH_RADIUS * 2.5;
-const RING_TILT = 23.5; // degrees (similar to Earth's axial tilt)
+const RING_TILT = 90;
 const SURFACE_VIEW_HEIGHT = 2; // km above surface
 const STARS_COUNT = 2000;
 
@@ -60,6 +60,8 @@ class RingSimulator {
     pipExportSize: "4K", // Export resolution
     // Ring settings
     ringScale: 1.0, // Scale factor for ring size
+    ringHorizontalRotation: 0, // Rotation around vertical axis (in degrees)
+    ringVerticalTilt: RING_TILT, // Tilt around horizontal axis (in degrees) - default to Earth's tilt
     // Calibration settings
     textureOffset: 0.5,
     textureRotation: Math.PI,
@@ -114,7 +116,20 @@ class RingSimulator {
   }
 
   private setupCamera(): void {
-    this.camera.position.z = EARTH_RADIUS * this.settings.cameraDistance;
+    // Position camera with an elevated view (30 degrees) and a horizontal offset (45 degrees)
+    const distance = EARTH_RADIUS * this.settings.cameraDistance;
+    const horizontalAngle = Math.PI / 4; // 45 degrees in radians
+    const verticalAngle = Math.PI / 6; // 30 degrees in radians
+
+    // Calculate position with both horizontal and vertical offsets
+    this.camera.position.x =
+      distance * Math.sin(horizontalAngle) * Math.cos(verticalAngle);
+    this.camera.position.y = distance * Math.sin(verticalAngle);
+    this.camera.position.z =
+      distance * Math.cos(horizontalAngle) * Math.cos(verticalAngle);
+
+    // Look at the origin (Earth's center)
+    this.camera.lookAt(0, 0, 0);
   }
 
   private setupControls(): void {
@@ -182,7 +197,10 @@ class RingSimulator {
       alphaTest: 0.1,
     });
     this.rings = new THREE.Mesh(ringGeometry, ringMaterial);
-    this.rings.rotation.x = THREE.MathUtils.degToRad(RING_TILT);
+
+    // Apply rotation settings
+    this.updateRingRotation(this.rings);
+
     this.scene.add(this.rings);
 
     // Add UV mapping for the ring texture
@@ -737,7 +755,10 @@ class RingSimulator {
       alphaTest: 0.1,
     });
     this.pipRings = new THREE.Mesh(ringGeometry, ringMaterial);
-    this.pipRings.rotation.x = THREE.MathUtils.degToRad(RING_TILT);
+
+    // Apply rotation settings
+    this.updateRingRotation(this.pipRings);
+
     this.pipScene.add(this.pipRings);
 
     // Add UV mapping for the ring texture
@@ -762,6 +783,33 @@ class RingSimulator {
     }
 
     ringGeometry.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
+  }
+
+  // New method to update ring rotation for any ring mesh
+  private updateRingRotation(ringMesh: THREE.Mesh): void {
+    // Reset rotation
+    ringMesh.rotation.set(0, 0, 0);
+
+    // Apply vertical tilt (X-axis rotation)
+    ringMesh.rotation.x = THREE.MathUtils.degToRad(
+      this.settings.ringVerticalTilt
+    );
+
+    // Apply horizontal rotation (Y-axis rotation)
+    ringMesh.rotation.y = THREE.MathUtils.degToRad(
+      this.settings.ringHorizontalRotation
+    );
+  }
+
+  // Method to update all ring rotations
+  private updateAllRingRotations(): void {
+    if (this.rings) {
+      this.updateRingRotation(this.rings);
+    }
+
+    if (this.pipRings) {
+      this.updateRingRotation(this.pipRings);
+    }
   }
 
   private updatePictureInPicture(): void {
@@ -981,6 +1029,17 @@ class RingSimulator {
           this.createPipRings();
         }
       });
+
+    // Add ring rotation controls
+    viewFolder
+      .add(this.settings, "ringHorizontalRotation", 0, 360, 5)
+      .name("Ring Rotation")
+      .onChange(() => this.updateAllRingRotations());
+
+    viewFolder
+      .add(this.settings, "ringVerticalTilt", 0, 90, 1)
+      .name("Ring Tilt")
+      .onChange(() => this.updateAllRingRotations());
 
     viewFolder
       .add(this.settings, "showStars")
@@ -1269,11 +1328,6 @@ class RingSimulator {
     if (this.settings.pipEnabled) {
       this.updatePictureInPicture();
       this.pipControls.update();
-
-      // Update PIP rings rotation to match main rings
-      if (this.pipRings && this.rings) {
-        this.pipRings.rotation.copy(this.rings.rotation);
-      }
 
       // Render PIP scene instead of main scene
       this.pipRenderer.render(this.pipScene, this.pipCamera);
