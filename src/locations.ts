@@ -23,26 +23,26 @@ export const locations: Location[] = [
   {
     name: "Sydney",
     latitude: -33.8688,
-    longitude: 151.2093,
+    longitude: -151.2093,
   },
   {
     name: "Cape Town",
     latitude: -33.9249,
-    longitude: 18.4241,
+    longitude: -18.4241,
   },
   {
     name: "Dubai",
     latitude: 25.2048,
-    longitude: 55.2708,
+    longitude: -55.2708,
   },
   {
     name: "Reykjavik",
     latitude: 64.1466,
-    longitude: -21.9426,
+    longitude: 21.9426,
   },
   {
     name: "Mount Everest",
     latitude: 27.9881,
-    longitude: 86.925,
+    longitude: -86.925,
   },
 ];
